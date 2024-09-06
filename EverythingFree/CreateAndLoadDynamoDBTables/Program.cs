@@ -1,4 +1,6 @@
 
+using Core;
+
 namespace CreateAndLoadDynamoDBTables
 {
     public class Program
@@ -13,6 +15,8 @@ namespace CreateAndLoadDynamoDBTables
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddScoped<ICreateTablesLoadData, CreateTablesLoadData>();
 
             var app = builder.Build();
 

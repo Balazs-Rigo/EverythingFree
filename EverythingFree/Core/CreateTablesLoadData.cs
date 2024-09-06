@@ -1,54 +1,51 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Amazon.DynamoDBv2;
 using System.Reflection.Metadata;
-using System.Text;
-using System.Threading.Tasks;
+using Amazon.Runtime;
+using Amazon.DynamoDBv2.Model;
+using Amazon.DynamoDBv2.DocumentModel;
+using Document = Amazon.DynamoDBv2.DocumentModel.Document;
 
 namespace Core
 {
-    class CreateTablesLoadData
+    public class CreateTablesLoadData : ICreateTablesLoadData
     {
-        private static AmazonDynamoDBClient client = new AmazonDynamoDBClient();
+        private AmazonDynamoDBClient client = new AmazonDynamoDBClient();
 
-        static void Main(string[] args)
+        public CreateTablesLoadData()
+        {
+
+        }
+
+        public async Task CreateTableAndLoadData ()
         {
             try
             {
-                //DeleteAllTables(client);
-                DeleteTable("ProductCatalog");
-                DeleteTable("Forum");
-                DeleteTable("Thread");
-                DeleteTable("Reply");
+                Task.WaitAll(DeleteTable("ProductCatalog"), DeleteTable("Forum"), DeleteTable("Thread"), DeleteTable("Reply"));
 
-                // Create tables (using the AWS SDK for .NET low-level API).
-                CreateTableProductCatalog();
-                CreateTableForum();
-                CreateTableThread(); // ForumTitle, Subject */
-                CreateTableReply();
+                //Task.WaitAll(CreateTableProductCatalog(), CreateTableForum(), CreateTableThread(), CreateTableReply());
 
-                // Load data (using the .NET SDK document API)
-                LoadSampleProducts();
-                LoadSampleForums();
-                LoadSampleThreads();
-                LoadSampleReplies();
-                Console.WriteLine("Sample complete!");
-                Console.WriteLine("Press ENTER to continue");
-                Console.ReadLine();
+                //// Load data (using the .NET SDK document API)
+                //await LoadSampleProducts();
+                //await LoadSampleForums();
+                //await LoadSampleThreads();
+                //await LoadSampleReplies();
+                //Console.WriteLine("Sample complete!");
+                //Console.WriteLine("Press ENTER to continue");
+                //Console.ReadLine();
             }
             catch (AmazonServiceException e) { Console.WriteLine(e.Message); }
             catch (Exception e) { Console.WriteLine(e.Message); }
         }
 
-        private static void DeleteTable(string tableName)
+        private async Task DeleteTable(string tableName)
         {
             try
             {
-                var deleteTableResponse = client.DeleteTable(new DeleteTableRequest()
+                var deleteTableResponse = await client.DeleteTableAsync(new DeleteTableRequest()
                 {
                     TableName = tableName
                 });
-                WaitTillTableDeleted(client, tableName, deleteTableResponse);
+                await WaitTillTableDeleted(client, tableName, deleteTableResponse);
             }
             catch (ResourceNotFoundException)
             {
@@ -56,11 +53,11 @@ namespace Core
             }
         }
 
-        private static void CreateTableProductCatalog()
+        private async Task CreateTableProductCatalog()
         {
             string tableName = "ProductCatalog";
 
-            var response = client.CreateTable(new CreateTableRequest
+            var response = await client.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
                 AttributeDefinitions = new List<AttributeDefinition>()
@@ -86,14 +83,14 @@ namespace Core
                 }
             });
 
-            WaitTillTableCreated(client, tableName, response);
+            await WaitTillTableCreated(client, tableName, response);
         }
 
-        private static void CreateTableForum()
+        private async Task CreateTableForum()
         {
             string tableName = "Forum";
 
-            var response = client.CreateTable(new CreateTableRequest
+            var response = await client.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
                 AttributeDefinitions = new List<AttributeDefinition>()
@@ -119,14 +116,14 @@ namespace Core
                 }
             });
 
-            WaitTillTableCreated(client, tableName, response);
+            await WaitTillTableCreated(client, tableName, response);
         }
 
-        private static void CreateTableThread()
+        private async Task CreateTableThread()
         {
             string tableName = "Thread";
 
-            var response = client.CreateTable(new CreateTableRequest
+            var response = await client.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
                 AttributeDefinitions = new List<AttributeDefinition>()
@@ -162,13 +159,13 @@ namespace Core
                 }
             });
 
-            WaitTillTableCreated(client, tableName, response);
+            await WaitTillTableCreated(client, tableName, response);
         }
 
-        private static void CreateTableReply()
+        private async Task CreateTableReply()
         {
             string tableName = "Reply";
-            var response = client.CreateTable(new CreateTableRequest
+            var response = await client.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
                 AttributeDefinitions = new List<AttributeDefinition>()
@@ -229,10 +226,10 @@ namespace Core
                 }
             });
 
-            WaitTillTableCreated(client, tableName, response);
+            await WaitTillTableCreated(client, tableName, response);
         }
 
-        private static void WaitTillTableCreated(AmazonDynamoDBClient client, string tableName,
+        private async Task WaitTillTableCreated(AmazonDynamoDBClient client, string tableName,
                              CreateTableResponse response)
         {
             var tableDescription = response.TableDescription;
@@ -247,7 +244,7 @@ namespace Core
                 System.Threading.Thread.Sleep(5000); // Wait 5 seconds.
                 try
                 {
-                    var res = client.DescribeTable(new DescribeTableRequest
+                    var res = await client.DescribeTableAsync(new DescribeTableRequest
                     {
                         TableName = tableName
                     });
@@ -261,7 +258,7 @@ namespace Core
             }
         }
 
-        private static void WaitTillTableDeleted(AmazonDynamoDBClient client, string tableName,
+        private async Task WaitTillTableDeleted(AmazonDynamoDBClient client, string tableName,
                              DeleteTableResponse response)
         {
             var tableDescription = response.TableDescription;
@@ -277,7 +274,7 @@ namespace Core
                 {
                     System.Threading.Thread.Sleep(5000); // wait 5 seconds
 
-                    var res = client.DescribeTable(new DescribeTableRequest
+                    var res = await client.DescribeTableAsync(new DescribeTableRequest
                     {
                         TableName = tableName
                     });
@@ -292,7 +289,7 @@ namespace Core
             }
         }
 
-        private static void LoadSampleProducts()
+        private async Task LoadSampleProducts()
         {
             Table productCatalogTable = Table.LoadTable(client, "ProductCatalog");
             // ********** Add Books *********************
@@ -306,7 +303,7 @@ namespace Core
             book1["PageCount"] = 500;
             book1["InPublication"] = true;
             book1["ProductCategory"] = "Book";
-            productCatalogTable.PutItem(book1);
+            await productCatalogTable.PutItemAsync(book1);
 
             var book2 = new Document();
 
@@ -319,7 +316,7 @@ namespace Core
             book2["PageCount"] = 600;
             book2["InPublication"] = true;
             book2["ProductCategory"] = "Book";
-            productCatalogTable.PutItem(book2);
+            await productCatalogTable.PutItemAsync(book2);
 
             var book3 = new Document();
             book3["Id"] = 103;
@@ -331,7 +328,7 @@ namespace Core
             book3["PageCount"] = 700;
             book3["InPublication"] = false;
             book3["ProductCategory"] = "Book";
-            productCatalogTable.PutItem(book3);
+            await productCatalogTable.PutItemAsync(book3);
 
             // ************ Add bikes. *******************
             var bicycle1 = new Document();
@@ -343,7 +340,7 @@ namespace Core
             bicycle1["Price"] = 100;
             bicycle1["Color"] = new List<string> { "Red", "Black" };
             bicycle1["ProductCategory"] = "Bike";
-            productCatalogTable.PutItem(bicycle1);
+            await productCatalogTable.PutItemAsync(bicycle1);
 
             var bicycle2 = new Document();
             bicycle2["Id"] = 202;
@@ -354,8 +351,8 @@ namespace Core
             bicycle2["Price"] = 200;
             bicycle2["Color"] = new List<string> { "Green", "Black" };
             bicycle2["ProductCategory"] = "Bicycle";
-            productCatalogTable.PutItem(bicycle2);
-
+            await productCatalogTable.PutItemAsync(bicycle2);
+            
             var bicycle3 = new Document();
             bicycle3["Id"] = 203;
             bicycle3["Title"] = "19-Bike 203";
@@ -365,7 +362,7 @@ namespace Core
             bicycle3["Price"] = 300;
             bicycle3["Color"] = new List<string> { "Red", "Green", "Black" };
             bicycle3["ProductCategory"] = "Bike";
-            productCatalogTable.PutItem(bicycle3);
+            await productCatalogTable.PutItemAsync(bicycle3);
 
             var bicycle4 = new Document();
             bicycle4["Id"] = 204;
@@ -376,7 +373,7 @@ namespace Core
             bicycle4["Price"] = 400;
             bicycle4["Color"] = new List<string> { "Red" };
             bicycle4["ProductCategory"] = "Bike";
-            productCatalogTable.PutItem(bicycle4);
+            await productCatalogTable.PutItemAsync(bicycle4);
 
             var bicycle5 = new Document();
             bicycle5["Id"] = 205;
@@ -387,10 +384,10 @@ namespace Core
             bicycle5["Price"] = 500;
             bicycle5["Color"] = new List<string> { "Red", "Black" };
             bicycle5["ProductCategory"] = "Bike";
-            productCatalogTable.PutItem(bicycle5);
+            await productCatalogTable.PutItemAsync(bicycle5);
         }
 
-        private static void LoadSampleForums()
+        private async Task LoadSampleForums()
         {
             Table forumTable = Table.LoadTable(client, "Forum");
 
@@ -401,17 +398,17 @@ namespace Core
             forum1["Messages"] = 4;
             forum1["Views"] = 1000;
 
-            forumTable.PutItem(forum1);
+            await forumTable.PutItemAsync(forum1);
 
             var forum2 = new Document();
             forum2["Name"] = "Amazon S3"; // PK
             forum2["Category"] = "Amazon Web Services";
             forum2["Threads"] = 1;
 
-            forumTable.PutItem(forum2);
+            await forumTable.PutItemAsync(forum2);
         }
 
-        private static void LoadSampleThreads()
+        private async Task LoadSampleThreads()
         {
             Table threadTable = Table.LoadTable(client, "Thread");
 
@@ -427,7 +424,7 @@ namespace Core
             thread1["Answered"] = false;
             thread1["Tags"] = new List<string> { "index", "primarykey", "table" };
 
-            threadTable.PutItem(thread1);
+            await threadTable.PutItemAsync(thread1);
 
             // Thread 2.
             var thread2 = new Document();
@@ -441,7 +438,7 @@ namespace Core
             thread2["Answered"] = false;
             thread2["Tags"] = new List<string> { "index", "primarykey", "rangekey" };
 
-            threadTable.PutItem(thread2);
+            await threadTable.PutItemAsync(thread2);
 
             // Thread 3.
             var thread3 = new Document();
@@ -454,10 +451,10 @@ namespace Core
             thread3["Replies"] = 0;
             thread3["Answered"] = false;
             thread3["Tags"] = new List<string> { "largeobjects", "multipart upload" };
-            threadTable.PutItem(thread3);
+            await threadTable.PutItemAsync(thread3);
         }
 
-        private static void LoadSampleReplies()
+        private async Task LoadSampleReplies()
         {
             Table replyTable = Table.LoadTable(client, "Reply");
 
@@ -468,7 +465,7 @@ namespace Core
             thread1Reply1["Message"] = "DynamoDB Thread 1 Reply 1 text";
             thread1Reply1["PostedBy"] = "User A";
 
-            replyTable.PutItem(thread1Reply1);
+            await replyTable.PutItemAsync(thread1Reply1);
 
             // Reply 2 - thread 1.
             var thread1reply2 = new Document();
@@ -477,7 +474,7 @@ namespace Core
             thread1reply2["Message"] = "DynamoDB Thread 1 Reply 2 text";
             thread1reply2["PostedBy"] = "User B";
 
-            replyTable.PutItem(thread1reply2);
+            await replyTable.PutItemAsync(thread1reply2);
 
             // Reply 3 - thread 1.
             var thread1Reply3 = new Document();
@@ -486,7 +483,7 @@ namespace Core
             thread1Reply3["Message"] = "DynamoDB Thread 1 Reply 3 text";
             thread1Reply3["PostedBy"] = "User B";
 
-            replyTable.PutItem(thread1Reply3);
+            await replyTable.PutItemAsync(thread1Reply3);
 
             // Reply 1 - thread 2.
             var thread2Reply1 = new Document();
@@ -496,7 +493,7 @@ namespace Core
             thread2Reply1["PostedBy"] = "User A";
 
 
-            replyTable.PutItem(thread2Reply1);
+            await replyTable.PutItemAsync(thread2Reply1);
 
             // Reply 2 - thread 2.
             var thread2Reply2 = new Document();
@@ -505,7 +502,7 @@ namespace Core
             thread2Reply2["Message"] = "DynamoDB Thread 2 Reply 2 text";
             thread2Reply2["PostedBy"] = "User A";
 
-            replyTable.PutItem(thread2Reply2);
+            await replyTable.PutItemAsync(thread2Reply2);
         }
     }
 }

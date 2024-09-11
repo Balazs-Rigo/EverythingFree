@@ -1,5 +1,10 @@
 
-using Core;
+using Amazon;
+using Amazon.DynamoDBv2;
+using Amazon.Runtime;
+using DataLayer;
+using DataLayer.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CreateAndLoadDynamoDBTables
 {
@@ -15,6 +20,18 @@ namespace CreateAndLoadDynamoDBTables
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
+            {
+                var creds = new BasicAWSCredentials("dummy","dummy");
+                var clientConfig = new AmazonDynamoDBConfig { 
+
+                    ServiceURL = "http://localhost:8000", 
+                    RegionEndpoint = RegionEndpoint.USEast1
+                };
+
+                return new AmazonDynamoDBClient(clientConfig);
+            });           
 
             builder.Services.AddScoped<ICreateTablesLoadData, CreateTablesLoadData>();
 

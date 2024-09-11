@@ -1,4 +1,4 @@
-﻿using Core;
+﻿using DataLayer.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -32,9 +32,9 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
         // POST api/<CreateTableAndLoadDataController>
         [HttpPost]
-        public void Post()
+        public async Task Post()
         {
-            _createTableAndLoadData.CreateTableAndLoadData();
+            await _createTableAndLoadData.CreateTableAndLoadData();
         }
 
         // PUT api/<CreateTableAndLoadDataController>/5

@@ -1,37 +1,43 @@
-﻿using Amazon.DynamoDBv2;
-using System.Reflection.Metadata;
+﻿using DataLayer.Interfaces;
+using Amazon.DynamoDBv2;
 using Amazon.Runtime;
 using Amazon.DynamoDBv2.Model;
 using Amazon.DynamoDBv2.DocumentModel;
-using Document = Amazon.DynamoDBv2.DocumentModel.Document;
 
-namespace Core
+namespace DataLayer
 {
     public class CreateTablesLoadData : ICreateTablesLoadData
     {
-        private AmazonDynamoDBClient client = new AmazonDynamoDBClient();
+        private IAmazonDynamoDB _client;
 
-        public CreateTablesLoadData()
+        public CreateTablesLoadData(IAmazonDynamoDB client)
         {
-
+            _client = client;
         }
 
-        public async Task CreateTableAndLoadData ()
+        public async Task CreateTableAndLoadData()
         {
             try
             {
-                Task.WaitAll(DeleteTable("ProductCatalog"), DeleteTable("Forum"), DeleteTable("Thread"), DeleteTable("Reply"));
+
+                //Task.WaitAll(DeleteTable("ProductCatalog"), DeleteTable("Forum"), DeleteTable("Thread"), DeleteTable("Reply"));
 
                 //Task.WaitAll(CreateTableProductCatalog(), CreateTableForum(), CreateTableThread(), CreateTableReply());
+                await DeleteTable("ProductCatalog");
+                await DeleteTable("Forum");
+                await DeleteTable("Thread");
+                await DeleteTable("Reply");
 
-                //// Load data (using the .NET SDK document API)
-                //await LoadSampleProducts();
-                //await LoadSampleForums();
-                //await LoadSampleThreads();
-                //await LoadSampleReplies();
-                //Console.WriteLine("Sample complete!");
-                //Console.WriteLine("Press ENTER to continue");
-                //Console.ReadLine();
+                await CreateTableProductCatalog();
+                await CreateTableForum();
+                await CreateTableThread();
+                await CreateTableReply();
+
+                // Load data (using the .NET SDK document API)
+                await LoadSampleProducts();
+                await LoadSampleForums();
+                await LoadSampleThreads();
+                await LoadSampleReplies();               
             }
             catch (AmazonServiceException e) { Console.WriteLine(e.Message); }
             catch (Exception e) { Console.WriteLine(e.Message); }
@@ -41,11 +47,11 @@ namespace Core
         {
             try
             {
-                var deleteTableResponse = await client.DeleteTableAsync(new DeleteTableRequest()
+                var deleteTableResponse = await _client.DeleteTableAsync(new DeleteTableRequest()
                 {
                     TableName = tableName
                 });
-                await WaitTillTableDeleted(client, tableName, deleteTableResponse);
+                await WaitTillTableDeleted(_client, tableName, deleteTableResponse);
             }
             catch (ResourceNotFoundException)
             {
@@ -57,7 +63,7 @@ namespace Core
         {
             string tableName = "ProductCatalog";
 
-            var response = await client.CreateTableAsync(new CreateTableRequest
+            var response = await _client.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
                 AttributeDefinitions = new List<AttributeDefinition>()
@@ -83,14 +89,14 @@ namespace Core
                 }
             });
 
-            await WaitTillTableCreated(client, tableName, response);
+            await WaitTillTableCreated(_client, tableName, response);
         }
 
         private async Task CreateTableForum()
         {
             string tableName = "Forum";
 
-            var response = await client.CreateTableAsync(new CreateTableRequest
+            var response = await _client.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
                 AttributeDefinitions = new List<AttributeDefinition>()
@@ -116,14 +122,14 @@ namespace Core
                 }
             });
 
-            await WaitTillTableCreated(client, tableName, response);
+            await WaitTillTableCreated(_client, tableName, response);
         }
 
         private async Task CreateTableThread()
         {
             string tableName = "Thread";
 
-            var response = await client.CreateTableAsync(new CreateTableRequest
+            var response = await _client.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
                 AttributeDefinitions = new List<AttributeDefinition>()
@@ -159,13 +165,13 @@ namespace Core
                 }
             });
 
-            await WaitTillTableCreated(client, tableName, response);
+            await WaitTillTableCreated(_client, tableName, response);
         }
 
         private async Task CreateTableReply()
         {
             string tableName = "Reply";
-            var response = await client.CreateTableAsync(new CreateTableRequest
+            var response = await _client.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
                 AttributeDefinitions = new List<AttributeDefinition>()
@@ -226,10 +232,10 @@ namespace Core
                 }
             });
 
-            await WaitTillTableCreated(client, tableName, response);
+            await WaitTillTableCreated(_client, tableName, response);
         }
 
-        private async Task WaitTillTableCreated(AmazonDynamoDBClient client, string tableName,
+        private async Task WaitTillTableCreated(IAmazonDynamoDB client, string tableName,
                              CreateTableResponse response)
         {
             var tableDescription = response.TableDescription;
@@ -258,7 +264,7 @@ namespace Core
             }
         }
 
-        private async Task WaitTillTableDeleted(AmazonDynamoDBClient client, string tableName,
+        private async Task WaitTillTableDeleted(IAmazonDynamoDB client, string tableName,
                              DeleteTableResponse response)
         {
             var tableDescription = response.TableDescription;
@@ -291,7 +297,7 @@ namespace Core
 
         private async Task LoadSampleProducts()
         {
-            Table productCatalogTable = Table.LoadTable(client, "ProductCatalog");
+            Table productCatalogTable = Table.LoadTable(_client, "ProductCatalog");
             // ********** Add Books *********************
             var book1 = new Document();
             book1["Id"] = 101;
@@ -352,7 +358,7 @@ namespace Core
             bicycle2["Color"] = new List<string> { "Green", "Black" };
             bicycle2["ProductCategory"] = "Bicycle";
             await productCatalogTable.PutItemAsync(bicycle2);
-            
+
             var bicycle3 = new Document();
             bicycle3["Id"] = 203;
             bicycle3["Title"] = "19-Bike 203";
@@ -389,7 +395,7 @@ namespace Core
 
         private async Task LoadSampleForums()
         {
-            Table forumTable = Table.LoadTable(client, "Forum");
+            Table forumTable = Table.LoadTable(_client, "Forum");
 
             var forum1 = new Document();
             forum1["Name"] = "Amazon DynamoDB"; // PK
@@ -410,7 +416,7 @@ namespace Core
 
         private async Task LoadSampleThreads()
         {
-            Table threadTable = Table.LoadTable(client, "Thread");
+            Table threadTable = Table.LoadTable(_client, "Thread");
 
             // Thread 1.
             var thread1 = new Document();
@@ -456,7 +462,7 @@ namespace Core
 
         private async Task LoadSampleReplies()
         {
-            Table replyTable = Table.LoadTable(client, "Reply");
+            Table replyTable = Table.LoadTable(_client, "Reply");
 
             // Reply 1 - thread 1.
             var thread1Reply1 = new Document();
@@ -506,3 +512,4 @@ namespace Core
         }
     }
 }
+

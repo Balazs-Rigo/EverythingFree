@@ -15,18 +15,18 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class CreateTableAndLoadDataController : ControllerBase
+    public class YoutubeDownloaderController : ControllerBase
     {
         private readonly ICreateTablesLoadData _createTableAndLoadData;
 
-        public CreateTableAndLoadDataController(ICreateTablesLoadData createTablesLoadData)
+        public YoutubeDownloaderController(ICreateTablesLoadData createTablesLoadData)
         {
             _createTableAndLoadData = createTablesLoadData;
         }
 
         //GET: api/<CreateTableAndLoadDataController>
         [HttpGet("{id}")]
-        [Tags("GetComments")]
+        [Tags("GetCommentsToSumRegex")]
         public IEnumerable<string> GetComments(int id = 0)
         {
             string pathOfComments = @"I:\IT\youtube\KenDBerry\eddigi\KenDBerryComments full.txt";
@@ -77,7 +77,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                 {
                     numberOfVideos++;
                     //ytdl.FFmpegPath = "path\\to\\ffmpeg.exe";
-                    var res = await ytdl.RunVideoDataFetch(linkOfVideo, overrideOptions: options);
+                    var res = await ytdl.RunVideoDataFetch("https://www.youtube.com/watch?v=KVVyyvWNUlQ&t=1s", overrideOptions: options);
                     // get some video information
                     VideoData video = res.Data;
                     if (video is null || video.Comments is null)
@@ -86,7 +86,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                         continue;
                     }
                     sb.Append($"******   {video.Title} - {video.UploadDate?.ToString("yyyy-MM-dd")} - Comments: {video.CommentCount} - video number: {numberOfVideos} - elapsed time: {sw.Elapsed.Hours}:{sw.Elapsed.Minutes}:{sw.Elapsed.Seconds}   ******").AppendLine().AppendLine();
-                    sb.AppendJoin(Environment.NewLine, video.Comments.Select(x => x.Author + Environment.NewLine + x.Text + Environment.NewLine).ToArray())
+                    sb.AppendJoin(Environment.NewLine, video.Comments.Select(x => x.Author + " - " +  x.Timestamp.Date + Environment.NewLine + x.Text + Environment.NewLine).ToArray())
                     .AppendLine().AppendLine().AppendLine();
 
                     System.IO.File.AppendAllText(pathOfCommentsToBeSaved, sb.ToString());
@@ -119,18 +119,6 @@ namespace CreateAndLoadDynamoDBTables.Controllers
         public async Task Post()
         {
             await _createTableAndLoadData.CreateTableAndLoadData();
-        }
-
-        // PUT api/<CreateTableAndLoadDataController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
-        {
-        }
-
-        // DELETE api/<CreateTableAndLoadDataController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using CoreLibrary.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.OpenApi.Validations;
 using System.Diagnostics;
 using System.Text;
@@ -17,7 +18,12 @@ namespace CreateAndLoadDynamoDBTables.Controllers
         [Tags("LoadDataToDatabaseFromStreamReader")]
         public async Task GetComments(int id = 0)
         {
-            string commentsPath = @"I:\IT\youtube\zeroCarbLifes\zeroCarbLifeComments.txt";
+            string commentsPath = @"I:\IT\youtube\SteakAndButterGal\SteakAndButterGalComments.txt";
+
+            var CS = "Data Source=DESKTOP-31JRUDE;Initial Catalog=YoutubeComments; Integrated Security=True;Trust Server Certificate=True";
+            
+            const string insertTitleQueryString = "INSERT INTO dbo.Videos (Id, VideoName) VALUES (@Id, @VideoName)";
+            const string insertCommentQueryString = "INSERT INTO dbo.Comments (Id, Comment) VALUES (@Id, @Comment)";
 
             System.IO.File.ReadAllText(commentsPath);
             using var reader = new StreamReader(commentsPath);
@@ -32,38 +38,52 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
             while ((currentLine.Append(await reader.ReadLineAsync()) != null))
             {
-                if (string.IsNullOrEmpty(currentLine.ToString())) continue;
-
-                if (currentLine.ToString().StartsWith("***"))
+                using (SqlConnection connection = new(CS))
                 {
-                    title.Clear();
-                    guid = Guid.NewGuid();
-                    title.Append(currentLine.ToString());
-                    titles[guid] = currentLine.ToString();
+                    using SqlCommand commandInsertTitle = new(insertTitleQueryString, connection);
+                    using SqlCommand commandInsertComment = new(insertCommentQueryString, connection);
+
+                    if (string.IsNullOrEmpty(currentLine.ToString())) continue;
+
+                    connection.Open();
+
+                    if (currentLine.ToString().StartsWith("******   "))
+                    {
+                        title.Clear();
+                        guid = Guid.NewGuid();
+                        title.Append(currentLine.ToString());
+                        titles[guid] = title.ToString();
+                        commandInsertTitle.Parameters.AddWithValue("@Id", guid);
+                        commandInsertTitle.Parameters.AddWithValue("@VideoName", title.ToString());
+                        
+                        await commandInsertTitle.ExecuteNonQueryAsync();
+                    }
+
+                    if (currentLine.ToString().StartsWith('@') && comment.ToString().StartsWith('@'))
+                    {
+                        var commentEntry = new Comment() { Guid = guid, Text = comment.ToString() };
+                        comments.Add(commentEntry);
+                        commandInsertComment.Parameters.AddWithValue("@Id", commentEntry.Guid);
+                        commandInsertComment.Parameters.AddWithValue("@Comment", commentEntry.Text);
+
+                        await commandInsertComment.ExecuteNonQueryAsync();
+                        comment.Clear();
+                    }
+
+                    if (!string.IsNullOrEmpty(currentLine.ToString()) && !currentLine.ToString().StartsWith("****"))
+                    {
+                        if (currentLine.ToString().StartsWith('@'))
+                            comment.Append(currentLine.ToString() + Environment.NewLine);
+                        else
+                            comment.Append(currentLine.ToString() + " ");
+                    }
+
+                    if (currentLine.ToString().Contains("Total Number Of Comments"))
+                        break;
+
+                    currentLine.Clear();
                 }
-
-                if (currentLine.ToString().StartsWith('@') && comment.ToString().StartsWith('@'))
-                {
-                    var commentEntry = new Comment() { Guid = guid, Text = comment.ToString() };
-                    comments.Add(commentEntry);
-                    comment.Clear();
-                }
-
-
-                if (!string.IsNullOrEmpty(currentLine.ToString()) && !currentLine.ToString().StartsWith("****"))
-                {
-                    if (currentLine.ToString().StartsWith('@'))
-                        comment.Append(currentLine.ToString() + Environment.NewLine);
-                    else
-                        comment.Append(currentLine.ToString() + " ");
-                }
-
-                if (currentLine.ToString().Contains("Total Number Of Comments"))
-                    break;
-
-                currentLine.Clear();
             }
-
             sw.Stop();
             var elapsed = sw.Elapsed;
         }

@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using CoreLibrary.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Validations;
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -22,8 +25,10 @@ namespace CreateAndLoadDynamoDBTables.Controllers
             var title = new StringBuilder();
             var comment = new StringBuilder();
             var guid = new Guid();
-            var comments = new List<string>();
+            var comments = new List<Comment>();
             var titles = new Dictionary<Guid, string>();
+            var sw = new Stopwatch();
+            sw.Start();
 
             while ((currentLine.Append(await reader.ReadLineAsync()) != null))
             {
@@ -39,7 +44,8 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
                 if (currentLine.ToString().StartsWith('@') && comment.ToString().StartsWith('@'))
                 {
-                    comments.Add(comment.ToString());
+                    var commentEntry = new Comment() { Guid = guid, Text = comment.ToString() };
+                    comments.Add(commentEntry);
                     comment.Clear();
                 }
 
@@ -57,6 +63,9 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
                 currentLine.Clear();
             }
+
+            sw.Stop();
+            var elapsed = sw.Elapsed;
         }
 
         [HttpGet]

@@ -49,7 +49,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
         [Tags("YoutubeComments")]
         public async Task<string> Get(/*int id*/)
         {
-            string nameOfTheYoutubeChannel = "teszt";
+            string nameOfTheYoutubeChannel = "fungus";
             string pathOfTheVideoLinks = @$"I:\IT\youtube\{nameOfTheYoutubeChannel}\{nameOfTheYoutubeChannel}VideoLinks.txt";
             string pathOfCommentsToBeSaved = @$"I:\IT\youtube\{nameOfTheYoutubeChannel}\{nameOfTheYoutubeChannel}Comments.txt";
             string pathLogFile = @$"I:\IT\youtube\{nameOfTheYoutubeChannel}\{nameOfTheYoutubeChannel}Log.txt";
@@ -77,7 +77,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                 {
                     numberOfVideos++;
                     //ytdl.FFmpegPath = "path\\to\\ffmpeg.exe";
-                    var res = await ytdl.RunVideoDataFetch("https://www.youtube.com/watch?v=KVVyyvWNUlQ&t=1s", overrideOptions: options);
+                    var res = await ytdl.RunVideoDataFetch(linkOfVideo, overrideOptions: options);
                     // get some video information
                     VideoData video = res.Data;
                     if (video is null || video.Comments is null)

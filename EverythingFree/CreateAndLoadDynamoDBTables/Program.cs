@@ -4,6 +4,7 @@ using Amazon.DynamoDBv2;
 using Amazon.Runtime;
 using DataLayer;
 using DataLayer.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CreateAndLoadDynamoDBTables
@@ -20,6 +21,9 @@ namespace CreateAndLoadDynamoDBTables
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddDbContext<PostgresDBContext>(
+                o => o.UseNpgsql(builder.Configuration.GetConnectionString("PCS")));
 
             builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
             {

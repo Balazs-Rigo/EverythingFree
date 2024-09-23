@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace CoreLibrary.Models
 {
-    public class Comment
+    public class Comments
     {
-        public string Text { get; set; }
-        public Guid Guid { get; set; }
+        public Guid Id { get; set; }
+        public string Comment { get; set; }
+        
     }
 }

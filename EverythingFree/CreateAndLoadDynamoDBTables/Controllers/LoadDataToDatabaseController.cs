@@ -1,4 +1,5 @@
 ﻿using CoreLibrary.Models;
+using DataLayer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -14,12 +15,19 @@ namespace CreateAndLoadDynamoDBTables.Controllers
     [ApiController]
     public class LoadDataToDatabaseController : ControllerBase
     {
+        private readonly PostgresDBContext _dbContext;
+
+        public LoadDataToDatabaseController(PostgresDBContext dbContext)
+        {
+                _dbContext = dbContext;
+        }
+
         //GET: api/<CreateTableAndLoadDataController>
         [HttpGet("{id}")]
         [Tags("LoadDataToDatabaseFromStreamReaderBulkInsert")]
         public async Task GetComments(int id = 0)
         {
-            string commentsPath = @"I:\IT\youtube\KenDBerry\KenDBerryComments.txt";
+            string commentsPath = @"I:\IT\youtube\LauraSpath\LauraSpathComments.txt";
 
             var CS = "Data Source=DESKTOP-31JRUDE;Initial Catalog=YoutubeComments; Integrated Security=True;Trust Server Certificate=True";
 
@@ -41,8 +49,9 @@ namespace CreateAndLoadDynamoDBTables.Controllers
             var title = new StringBuilder();
             var comment = new StringBuilder();
             var guid = new Guid();
-            var comments = new List<Comment>();
+            var comments = new List<Comments>();
             var titles = new Dictionary<Guid, string>();
+            int idInt = 0;
 
             using SqlConnection conn = new SqlConnection(CS);
             using SqlBulkCopy sqlBulkCopy = new SqlBulkCopy(conn);
@@ -62,23 +71,23 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
                 if (string.IsNullOrEmpty(currentLine.ToString())) continue;                
 
-                //if (currentLine.ToString().StartsWith("******   "))
-                //{
-                //    title.Clear();
-                //    guid = Guid.NewGuid();
-                //    title.Append(currentLine.ToString());
-                //    titles[guid] = title.ToString();
+                if (currentLine.ToString().StartsWith("******   "))
+                {
+                    title.Clear();
+                    guid = Guid.NewGuid();
+                    title.Append(currentLine.ToString());
+                    titles[guid] = title.ToString();
 
                 //    //commandInsertTitle.Parameters.AddWithValue("@Id", guid);
                 //    //commandInsertTitle.Parameters.AddWithValue("@VideoName", title.ToString());
 
                 //    //await commandInsertTitle.ExecuteNonQueryAsync();
-                //}
+                }
 
                 if (currentLine.ToString().StartsWith('@') && comment.ToString().StartsWith('@'))
                 {
-                    //var commentEntry = new Comment() { Guid = guid, Text = comment.ToString() };
-                    //comments.Add(commentEntry);
+                    var commentEntry = new Comments() { Id = Guid.NewGuid() , Comment = comment.ToString() };
+                    comments.Add(commentEntry);
                     commentsDataTable.Rows.Add(guid.ToString(), comment.ToString());
 
                     //commandInsertComment.Parameters.AddWithValue("@Id", commentEntry.Guid);
@@ -101,7 +110,9 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
                 currentLine.Clear();
             }
-            
+
+            _dbContext.Comments.AddRange(comments);
+            await _dbContext.SaveChangesAsync();
             await conn.OpenAsync();
             await sqlBulkCopy.WriteToServerAsync(commentsDataTable);
             await conn.CloseAsync();

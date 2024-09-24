@@ -2,6 +2,7 @@
 using DataLayer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Data.SqlClient;
 using Microsoft.OpenApi.Validations;
 using System.Data;
@@ -93,7 +94,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
                         currentLine.AppendLine(line);                       
 
-                        if (string.IsNullOrEmpty(currentLine.ToString())) continue;
+                        if (string.IsNullOrEmpty(currentLine.ToString().Trim())) continue;
 
                         lineCounter = currentLine.ToString().Trim().StartsWith('@') ? ++lineCounter : 0;                        
 
@@ -104,9 +105,12 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                             title.Append(currentLine.ToString());
                             titles[guid] = title.ToString();
                             videosDataTable.Rows.Add(guid.ToString(), title.ToString());
-                        }
+                        }                                              
 
-                        if (currentLine.ToString().StartsWith('@') && comment.ToString().StartsWith('@'))
+                        var isCurrLine = currentLine.ToString().Trim().StartsWith("@");
+                        var isComment = comment.ToString().Trim().StartsWith("@");
+
+                        if (currentLine.ToString().Trim().StartsWith("@") && comment.ToString().Trim().StartsWith("@") && lineCounter != 2)
                         {
                             var commentEntry = new Comments() { Id = Guid.NewGuid(), Comment = comment.ToString() };
                             comments.Add(commentEntry);
@@ -115,15 +119,18 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                             comment.Clear();
                         }
 
-                        if (!string.IsNullOrEmpty(currentLine.ToString()) && !currentLine.ToString().StartsWith("******   "))
+                        if ((!string.IsNullOrEmpty(currentLine.ToString()) || !string.IsNullOrEmpty(currentLine.ToString()))
+                            && !currentLine.ToString().StartsWith("******   "))
                         {
                             if (currentLine.ToString().StartsWith('@') && lineCounter != 2)
                                 comment.Append(currentLine.ToString() + Environment.NewLine);
                             else if (currentLine.ToString().Trim().StartsWith('@') && lineCounter == 2)
-                                comment.Append(currentLine.ToString().Trim().Remove(0,1));
+                                comment.Append(currentLine.ToString().Trim().Remove(0, 1));
                             else
                                 comment.Append(currentLine.ToString() + " ");
                         }
+
+
 
                         if (currentLine.ToString().Contains("Total Number Of Comments"))
                         {

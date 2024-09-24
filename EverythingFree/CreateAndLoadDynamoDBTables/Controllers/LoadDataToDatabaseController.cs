@@ -6,6 +6,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.OpenApi.Validations;
 using System.Data;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -27,94 +28,103 @@ namespace CreateAndLoadDynamoDBTables.Controllers
         [Tags("LoadDataToDatabaseFromStreamReaderBulkInsert")]
         public async Task GetComments(int id = 0)
         {
+            string pathOfDirectory = @"I:\IT\youtube\!!!ALL";
+            var files = Directory.GetFiles(pathOfDirectory, "*.*", SearchOption.TopDirectoryOnly);
             string commentsPath = @"I:\IT\youtube\LauraSpath\LauraSpathComments.txt";
 
-            var CS = "Data Source=DESKTOP-31JRUDE;Initial Catalog=YoutubeComments; Integrated Security=True;Trust Server Certificate=True";
-
-            const string insertTitleQueryString = "INSERT INTO dbo.Videos (Id, VideoName) VALUES (@Id, @VideoName)";
-            const string insertCommentQueryString = "INSERT INTO dbo.Comments (Id, Comment) VALUES (@Id, @Comment)";
-
+            var CS = "Data Source=.;Initial Catalog=Youtube; Integrated Security=True;Trust Server Certificate=True";
+           
             //System.IO.File.ReadAllText(commentsPath);
 
             DataTable commentsDataTable = new DataTable("Comments");
+            DataTable videosDataTable = new DataTable("Videos");
 
-            DataColumn idDataColumn = new("Id",typeof(Guid));
-            commentsDataTable.Columns.Add(idDataColumn);
+            DataColumn idDataColumnComment = new("Id",typeof(Guid));
+            DataColumn idDataColumnVideo = new("Id", typeof(Guid));
+            commentsDataTable.Columns.Add(idDataColumnComment);
+            videosDataTable.Columns.Add(idDataColumnVideo);
 
             DataColumn commentDataColumn = new("Comment");
+            DataColumn videoDataColumn = new("Video");
             commentsDataTable.Columns.Add(commentDataColumn);
+            videosDataTable.Columns.Add(videoDataColumn);
 
-            using var reader = new StreamReader(commentsPath);
+            using SqlConnection conn = new SqlConnection(CS);
+           
+            using SqlBulkCopy sqlBulkCopyComment = new SqlBulkCopy(conn);
+            using SqlBulkCopy sqlBulkCopyVideo = new SqlBulkCopy(conn);
+
+            sqlBulkCopyComment.DestinationTableName = "dbo.Comments";
+            sqlBulkCopyComment.ColumnMappings.Add("Id", "Id");
+            sqlBulkCopyComment.ColumnMappings.Add("Comment", "Comment");
+
+            sqlBulkCopyVideo.DestinationTableName = "dbo.Videos";
+            sqlBulkCopyVideo.ColumnMappings.Add("Id", "Id");
+            sqlBulkCopyVideo.ColumnMappings.Add("Video", "Video");
+
             var currentLine = new StringBuilder();
             var title = new StringBuilder();
             var comment = new StringBuilder();
             var guid = new Guid();
             var comments = new List<Comments>();
             var titles = new Dictionary<Guid, string>();
-            int idInt = 0;
-
-            using SqlConnection conn = new SqlConnection(CS);
-            using SqlBulkCopy sqlBulkCopy = new SqlBulkCopy(conn);
-            sqlBulkCopy.DestinationTableName = "dbo.Comments";
-            sqlBulkCopy.ColumnMappings.Add("Id", "Id");
-            sqlBulkCopy.ColumnMappings.Add("Comment", "Comment");
+            string filename = string.Empty;
 
             var sw = new Stopwatch();
             sw.Start();
 
-            //await conn.OpenAsync();
-
-            while ((currentLine.Append(await reader.ReadLineAsync()) != null))
+            foreach (var file in files)
             {
-                using SqlCommand commandInsertTitle = new(insertTitleQueryString, conn);
-                using SqlCommand commandInsertComment = new(insertCommentQueryString, conn);
+                if (Path.GetFileName(file).StartsWith('!')) continue;
 
-                if (string.IsNullOrEmpty(currentLine.ToString())) continue;                
-
-                if (currentLine.ToString().StartsWith("******   "))
+                using (StreamReader reader = new(file))
                 {
-                    title.Clear();
-                    guid = Guid.NewGuid();
-                    title.Append(currentLine.ToString());
-                    titles[guid] = title.ToString();
+                    while ((currentLine.Append(await reader.ReadLineAsync()) != null))
+                    {
+                        if (string.IsNullOrEmpty(currentLine.ToString())) continue;
 
-                //    //commandInsertTitle.Parameters.AddWithValue("@Id", guid);
-                //    //commandInsertTitle.Parameters.AddWithValue("@VideoName", title.ToString());
+                        if (currentLine.ToString().StartsWith("******   "))
+                        {
+                            title.Clear();
+                            guid = Guid.NewGuid();
+                            title.Append(currentLine.ToString());
+                            titles[guid] = title.ToString();
+                            videosDataTable.Rows.Add(guid.ToString(), title.ToString());
+                        }
 
-                //    //await commandInsertTitle.ExecuteNonQueryAsync();
-                }
+                        if (currentLine.ToString().StartsWith('@') && comment.ToString().StartsWith('@'))
+                        {
+                            var commentEntry = new Comments() { Id = Guid.NewGuid(), Comment = comment.ToString() };
+                            comments.Add(commentEntry);
+                            commentsDataTable.Rows.Add(guid.ToString(), comment.ToString());
 
-                if (currentLine.ToString().StartsWith('@') && comment.ToString().StartsWith('@'))
-                {
-                    var commentEntry = new Comments() { Id = Guid.NewGuid() , Comment = comment.ToString() };
-                    comments.Add(commentEntry);
-                    commentsDataTable.Rows.Add(guid.ToString(), comment.ToString());
+                            comment.Clear();
+                        }
 
-                    //commandInsertComment.Parameters.AddWithValue("@Id", commentEntry.Guid);
-                    //commandInsertComment.Parameters.AddWithValue("@Comment", commentEntry.Text);
+                        if (!string.IsNullOrEmpty(currentLine.ToString()) && !currentLine.ToString().StartsWith("****"))
+                        {
+                            if (currentLine.ToString().StartsWith('@'))
+                                comment.Append(currentLine.ToString() + Environment.NewLine);
+                            else
+                                comment.Append(currentLine.ToString() + " ");
+                        }
 
-                    //await commandInsertComment.ExecuteNonQueryAsync();
-                    comment.Clear();
-                }
+                        if (currentLine.ToString().Contains("Total Number Of Comments"))
+                        {
+                            currentLine.Clear();
+                            break;
+                        }
+                        currentLine.Clear();
+                    }
 
-                if (!string.IsNullOrEmpty(currentLine.ToString()) && !currentLine.ToString().StartsWith("****"))
-                {
-                    if (currentLine.ToString().StartsWith('@'))
-                        comment.Append(currentLine.ToString() + Environment.NewLine);
-                    else
-                        comment.Append(currentLine.ToString() + " ");
-                }
-
-                if (currentLine.ToString().Contains("Total Number Of Comments"))
-                    break;
-
-                currentLine.Clear();
+                    reader.Close();
+                }                             
+                
             }
-
-            _dbContext.Comments.AddRange(comments);
-            await _dbContext.SaveChangesAsync();
+            
             await conn.OpenAsync();
-            await sqlBulkCopy.WriteToServerAsync(commentsDataTable);
+            await sqlBulkCopyComment.WriteToServerAsync(commentsDataTable);
+            await sqlBulkCopyVideo.WriteToServerAsync(videosDataTable);
             await conn.CloseAsync();
 
             sw.Stop();

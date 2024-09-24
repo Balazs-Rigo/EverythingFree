@@ -24,7 +24,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
         }
 
         //GET: api/<CreateTableAndLoadDataController>
-        [HttpGet("{id}")]
+        [HttpPost("{id}")]
         [Tags("LoadDataToDatabaseFromStreamReaderBulkInsert")]
         public async Task GetComments(int id = 0)
         {
@@ -69,6 +69,9 @@ namespace CreateAndLoadDynamoDBTables.Controllers
             var comments = new List<Comments>();
             var titles = new Dictionary<Guid, string>();
             string filename = string.Empty;
+            int lineCounter = 0;
+            string currentLineString = string.Empty;
+            string? line = string.Empty;
 
             var sw = new Stopwatch();
             sw.Start();
@@ -79,9 +82,20 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
                 using (StreamReader reader = new(file))
                 {
-                    while ((currentLine.Append(await reader.ReadLineAsync()) != null))
+                    while (true)
                     {
+                        line = await reader.ReadLineAsync();
+
+                        if (line == null)
+                        {
+                            break;
+                        }
+
+                        currentLine.AppendLine(line);                       
+
                         if (string.IsNullOrEmpty(currentLine.ToString())) continue;
+
+                        lineCounter = currentLine.ToString().Trim().StartsWith('@') ? ++lineCounter : 0;                        
 
                         if (currentLine.ToString().StartsWith("******   "))
                         {
@@ -101,23 +115,24 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                             comment.Clear();
                         }
 
-                        if (!string.IsNullOrEmpty(currentLine.ToString()) && !currentLine.ToString().StartsWith("****"))
+                        if (!string.IsNullOrEmpty(currentLine.ToString()) && !currentLine.ToString().StartsWith("******   "))
                         {
-                            if (currentLine.ToString().StartsWith('@'))
+                            if (currentLine.ToString().StartsWith('@') && lineCounter != 2)
                                 comment.Append(currentLine.ToString() + Environment.NewLine);
+                            else if (currentLine.ToString().Trim().StartsWith('@') && lineCounter == 2)
+                                comment.Append(currentLine.ToString().Trim().Remove(0,1));
                             else
                                 comment.Append(currentLine.ToString() + " ");
                         }
 
                         if (currentLine.ToString().Contains("Total Number Of Comments"))
                         {
+                            comment.Append(currentLine.ToString());
                             currentLine.Clear();
                             break;
                         }
                         currentLine.Clear();
                     }
-
-                    reader.Close();
                 }                             
                 
             }
@@ -133,16 +148,18 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
         [HttpGet]
         [Tags("LoadDataToDatabaseFromFileReaderRegex")]
-        public void LoadCommentsToDatabase()
+        public int LoadCommentsToDatabase()
         {
             string commentsPath = @"I:\IT\youtube\zeroCarbLifes\zeroCarbLifeComments.txt";
 
             var comments = System.IO.File.ReadAllText(commentsPath);
 
-            var pattern = "@";
-            var regex = new Regex(pattern);
+            var pattern = "^@";
+            var regex = new Regex(pattern,RegexOptions.Multiline);
 
             var matches = regex.Matches(comments);
+
+            return matches.Count;
         }       
     }
 }

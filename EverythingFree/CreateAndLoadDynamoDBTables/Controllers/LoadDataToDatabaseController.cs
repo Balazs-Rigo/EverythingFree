@@ -98,7 +98,16 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                             break;
                         }
 
-                        currentLine.AppendLine(line);                       
+                        currentLine.AppendLine(line);
+
+                        if (currentLine.ToString().Contains("Total Number Of Comments"))
+                        {
+                            var commentEntry = new Comments() { Id = Guid.NewGuid(), Comment = comment.ToString() };
+                            comments.Add(commentEntry);
+                            commentsDataTable.Rows.Add(guid.ToString(), comment.ToString());
+
+                            comment.Clear();
+                        }
 
                         if (string.IsNullOrEmpty(currentLine.ToString().Trim())) continue;
 
@@ -135,13 +144,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                             else
                                 comment.Append(currentLine.ToString() + " ");
                         }
-
-                        //if (currentLine.ToString().Contains("Total Number Of Comments"))
-                        //{
-                        //    comment.Append(currentLine.ToString());
-                        //    currentLine.Clear();
-                        //    break;
-                        //}
+                        
                         currentLine.Clear();
                     }
                 }                             

@@ -89,6 +89,12 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
                         if (line == null)
                         {
+                            var commentEntry = new Comments() { Id = Guid.NewGuid(), Comment = comment.ToString() };
+                            comments.Add(commentEntry);
+                            commentsDataTable.Rows.Add(guid.ToString(), comment.ToString());
+
+                            comment.Clear();
+                            currentLine.Clear();
                             break;
                         }
 
@@ -98,11 +104,11 @@ namespace CreateAndLoadDynamoDBTables.Controllers
 
                         lineCounter = currentLine.ToString().Trim().StartsWith('@') ? ++lineCounter : 0;                        
 
-                        if (currentLine.ToString().StartsWith("******   "))
+                        if (currentLine.ToString().Contains("******   "))
                         {
                             title.Clear();
                             guid = Guid.NewGuid();
-                            title.Append(currentLine.ToString());
+                            title.Append(currentLine.ToString().Substring(currentLine.ToString().IndexOf("******   ")));
                             titles[guid] = title.ToString();
                             videosDataTable.Rows.Add(guid.ToString(), title.ToString());
                         }                                              
@@ -120,7 +126,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                         }
 
                         if ((!string.IsNullOrEmpty(currentLine.ToString()) || !string.IsNullOrEmpty(currentLine.ToString()))
-                            && !currentLine.ToString().StartsWith("******   "))
+                            && !currentLine.ToString().Trim().StartsWith("******   "))
                         {
                             if (currentLine.ToString().StartsWith('@') && lineCounter != 2)
                                 comment.Append(currentLine.ToString() + Environment.NewLine);
@@ -130,14 +136,12 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                                 comment.Append(currentLine.ToString() + " ");
                         }
 
-
-
-                        if (currentLine.ToString().Contains("Total Number Of Comments"))
-                        {
-                            comment.Append(currentLine.ToString());
-                            currentLine.Clear();
-                            break;
-                        }
+                        //if (currentLine.ToString().Contains("Total Number Of Comments"))
+                        //{
+                        //    comment.Append(currentLine.ToString());
+                        //    currentLine.Clear();
+                        //    break;
+                        //}
                         currentLine.Clear();
                     }
                 }                             

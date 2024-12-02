@@ -49,7 +49,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
         [Tags("YoutubeComments")]
         public async Task<string> Get(/*int id*/)
         {
-            string nameOfTheYoutubeChannel = "fungus";
+            string nameOfTheYoutubeChannel = "KenDBerry";
             string pathOfTheVideoLinks = @$"I:\IT\youtube\{nameOfTheYoutubeChannel}\{nameOfTheYoutubeChannel}VideoLinks.txt";
             string pathOfCommentsToBeSaved = @$"I:\IT\youtube\{nameOfTheYoutubeChannel}\{nameOfTheYoutubeChannel}Comments.txt";
             string pathLogFile = @$"I:\IT\youtube\{nameOfTheYoutubeChannel}\{nameOfTheYoutubeChannel}Log.txt";
@@ -86,7 +86,7 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                         continue;
                     }
                     sb.Append($"******   {video.Title} - {video.UploadDate?.ToString("yyyy-MM-dd")} - Comments: {video.CommentCount} - video number: {numberOfVideos} - elapsed time: {sw.Elapsed.Hours}:{sw.Elapsed.Minutes}:{sw.Elapsed.Seconds}   ******").AppendLine().AppendLine();
-                    sb.AppendJoin(Environment.NewLine, video.Comments.Select(x => x.Author + " - " +  x.Timestamp.Date + Environment.NewLine + x.Text + Environment.NewLine).ToArray())
+                    sb.AppendJoin(Environment.NewLine, video.Comments.Select(x => "---soc" + x.Author + " - " +  x.Timestamp.ToShortDateString() + Environment.NewLine + x.Text + "---eoc" + Environment.NewLine).ToArray())
                     .AppendLine().AppendLine().AppendLine();
 
                     System.IO.File.AppendAllText(pathOfCommentsToBeSaved, sb.ToString());

@@ -29,9 +29,8 @@ namespace CreateAndLoadDynamoDBTables.Controllers
         [Tags("LoadDataToDatabaseFromStreamReaderBulkInsert")]
         public async Task GetComments(int id = 0)
         {
-            string pathOfDirectory = @"I:\IT\youtube\!!!ALL";
+            string pathOfDirectory = @"I:\IT\youtube\!!!ALL\commentsWithDates";
             var files = Directory.GetFiles(pathOfDirectory, "*.*", SearchOption.TopDirectoryOnly);
-            string commentsPath = @"I:\IT\youtube\LauraSpath\LauraSpathComments.txt";
 
             var CS = "Data Source=.;Initial Catalog=Youtube; Integrated Security=True;Trust Server Certificate=True";
            
@@ -63,15 +62,8 @@ namespace CreateAndLoadDynamoDBTables.Controllers
             sqlBulkCopyVideo.ColumnMappings.Add("Id", "Id");
             sqlBulkCopyVideo.ColumnMappings.Add("Video", "Video");
 
-            var currentLine = new StringBuilder();
-            var title = new StringBuilder();
-            var comment = new StringBuilder();
-            var guid = new Guid();
-            var comments = new List<Comments>();
-            var titles = new Dictionary<Guid, string>();
-            string filename = string.Empty;
-            int lineCounter = 0;
-            string currentLineString = string.Empty;
+            var videoId = new Guid();                   
+            var comment = new StringBuilder();  
             string? line = string.Empty;
 
             var sw = new Stopwatch();
@@ -87,65 +79,22 @@ namespace CreateAndLoadDynamoDBTables.Controllers
                     {
                         line = await reader.ReadLineAsync();
 
-                        if (line == null)
-                        {
-                            var commentEntry = new Comments() { Id = Guid.NewGuid(), Comment = comment.ToString() };
-                            comments.Add(commentEntry);
-                            commentsDataTable.Rows.Add(guid.ToString(), comment.ToString());
-
-                            comment.Clear();
-                            currentLine.Clear();
-                            break;
-                        }
-
-                        currentLine.AppendLine(line);
-
-                        if (currentLine.ToString().Contains("Total Number Of Comments"))
-                        {
-                            var commentEntry = new Comments() { Id = Guid.NewGuid(), Comment = comment.ToString() };
-                            comments.Add(commentEntry);
-                            commentsDataTable.Rows.Add(guid.ToString(), comment.ToString());
-
-                            comment.Clear();
-                        }
-
-                        if (string.IsNullOrEmpty(currentLine.ToString().Trim())) continue;
-
-                        lineCounter = currentLine.ToString().Trim().StartsWith('@') ? ++lineCounter : 0;                        
-
-                        if (currentLine.ToString().Contains("******   "))
-                        {
-                            title.Clear();
-                            guid = Guid.NewGuid();
-                            title.Append(currentLine.ToString().Substring(currentLine.ToString().IndexOf("******   ")));
-                            titles[guid] = title.ToString();
-                            videosDataTable.Rows.Add(guid.ToString(), title.ToString());
-                        }                                              
-
-                        var isCurrLine = currentLine.ToString().Trim().StartsWith("@");
-                        var isComment = comment.ToString().Trim().StartsWith("@");
-
-                        if (currentLine.ToString().Trim().StartsWith("@") && comment.ToString().Trim().StartsWith("@") && lineCounter != 2)
-                        {
-                            var commentEntry = new Comments() { Id = Guid.NewGuid(), Comment = comment.ToString() };
-                            comments.Add(commentEntry);
-                            commentsDataTable.Rows.Add(guid.ToString(), comment.ToString());
-
-                            comment.Clear();
-                        }
-
-                        if ((!string.IsNullOrEmpty(currentLine.ToString()) || !string.IsNullOrEmpty(currentLine.ToString()))
-                            && !currentLine.ToString().Trim().StartsWith("******   "))
-                        {
-                            if (currentLine.ToString().StartsWith('@') && lineCounter != 2)
-                                comment.Append(currentLine.ToString() + Environment.NewLine);
-                            else if (currentLine.ToString().Trim().StartsWith('@') && lineCounter == 2)
-                                comment.Append(currentLine.ToString().Trim().Remove(0, 1));
-                            else
-                                comment.Append(currentLine.ToString() + " ");
-                        }
+                        if (line == null) break;
                         
-                        currentLine.Clear();
+                        if (line.StartsWith("******   "))
+                        {
+                            videoId = Guid.NewGuid();
+                            videosDataTable.Rows.Add(videoId, line.ToString());
+                            continue;
+                        }
+
+                        comment.Append(line);
+
+                        if (line.EndsWith("---eoc"))
+                        {
+                            commentsDataTable.Rows.Add(videoId, comment.ToString());
+                            comment.Clear();
+                        }
                     }
                 }                             
                 

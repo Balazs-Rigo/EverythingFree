@@ -26,6 +26,6 @@ namespace DataLayer
         //    optionsBuilder.UseNpgsql("Host = localhost:5432; Database = Youtube; Username = postgres; Password = password");
         //}
 
-        public DbSet<Comments> Comments { get; set; }
+        public DbSet<Comment> Comments { get; set; }
     }
 }
